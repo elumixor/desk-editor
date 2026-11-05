@@ -1,0 +1,3 @@
+tiptap-extension-vim 0.1.2 by quadsteel (https://github.com/quadsteel/tiptap-vim), MIT, see LICENSE.
+dist/index.mjs and dist/index.d.mts with Keep's changes: motions count inline nodes as one character,
+registers keep the yanked document slice, yanks reach the clipboard, `e` crosses into the next block.

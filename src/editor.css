@@ -1,0 +1,470 @@
+/*
+ * Keep's editor as CSS: prose under `.desk-prose`, Vim's cursor, selection, matches and line numbers. Reads the tokens of
+ * `@desk/core/tokens.css`. Scoped classes and no Tailwind: Tailwind skips node_modules, and an app need not use it.
+ */
+:root {
+  /*
+   * Vim's cursor: the accent, as every caret in the app, a wash behind the block's character (which keeps its own
+   * colour) and solid as a bar or an underline. The selection: a wash of the accent.
+   */
+  --vim-cursor: color-mix(in srgb, var(--accent) 40%, transparent);
+  --vim-cursor-line: var(--accent);
+  /*
+   * Highlighted code, in the palette's own colours, so code changes with the theme: a page's code blocks and a
+   * script's editor alike. Each is eased a little towards the text, which keeps the brighter signals readable on a
+   * light palette.
+   */
+  --syntax-keyword: color-mix(in srgb, var(--accent) 85%, var(--text));
+  --syntax-string: color-mix(in srgb, var(--idle) 80%, var(--text));
+  --syntax-number: color-mix(in srgb, var(--warn) 85%, var(--text));
+  --syntax-title: color-mix(in srgb, var(--busy) 75%, var(--text));
+  --syntax-name: color-mix(in srgb, var(--hot) 85%, var(--text));
+  --vim-selection: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* What Tailwind's preflight would reset, for an app without it: nothing in the editor keeps a browser's margins. */
+@layer components {
+  .desk-prose,
+  .desk-prose *,
+  .desk-prose *::before,
+  .desk-prose *::after {
+    box-sizing: border-box;
+  }
+  .desk-prose :where(p, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre, hr, table, figure) {
+    margin: 0;
+  }
+  .desk-prose :where(h1, h2, h3, h4, h5, h6) {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  .desk-prose :where(ul, ol) {
+    padding: 0;
+  }
+  .desk-prose :where(button) {
+    border: 0;
+    font: inherit;
+  }
+}
+
+/* The editor's content, styled here because ProseMirror renders outside Svelte's scoping. */
+.desk-prose {
+  line-height: 1.6;
+  font-size: 16px;
+  outline: none;
+}
+.desk-prose > * + * {
+  margin-top: 0.25em;
+}
+/* In a layer, so a utility class on a paragraph inside the editor (a popup's hint) wins. */
+@layer components {
+  .desk-prose p {
+    padding: 2px 0;
+  }
+}
+.desk-prose h1,
+.desk-prose h2,
+.desk-prose h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.desk-prose h1 {
+  font-size: 1.875em;
+  margin-top: 1.1em;
+}
+.desk-prose h2 {
+  font-size: 1.5em;
+  margin-top: 0.9em;
+}
+.desk-prose h3 {
+  font-size: 1.25em;
+  margin-top: 0.7em;
+}
+/* In a layer, so a utility class on a list or link inside the editor (a popup) wins. */
+@layer components {
+  .desk-prose ul {
+    list-style: disc;
+    padding-left: 1.6em;
+  }
+  .desk-prose ol {
+    list-style: decimal;
+    padding-left: 1.6em;
+  }
+  .desk-prose li + li {
+    margin-top: 0.15em;
+  }
+}
+.desk-prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.1em;
+}
+.desk-prose ul[data-type="taskList"] li {
+  display: flex;
+  gap: 0.55em;
+  align-items: flex-start;
+}
+.desk-prose ul[data-type="taskList"] li > label {
+  margin-top: 0.3em;
+}
+.desk-prose ul[data-type="taskList"] input[type="checkbox"] {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1.5px solid var(--ink-30);
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.desk-prose ul[data-type="taskList"] input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.desk-prose ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  background: var(--accent-ink);
+  mask:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+.desk-prose ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--ink-45);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-30);
+}
+.desk-prose blockquote {
+  border-left: 3px solid var(--ink);
+  padding: 2px 0 2px 0.9em;
+}
+.desk-prose pre {
+  background: var(--code-bg);
+  box-shadow: inset 0 0 0 1px var(--ink-10);
+  border-radius: var(--r-sm);
+  padding: 1em 1.25em;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+.desk-prose .keep-code {
+  position: relative;
+}
+.desk-prose .keep-code-copy {
+  position: absolute;
+  top: 0.5em;
+  right: 0.6em;
+  display: flex;
+  padding: 0.3em;
+  color: var(--ink-45);
+  background: var(--code-bg);
+  box-shadow: inset 0 0 0 1px var(--ink-10);
+  border-radius: var(--r-xs);
+  opacity: 0;
+  transition: opacity 0.12s;
+  user-select: none;
+  cursor: pointer;
+}
+.desk-prose .keep-code:hover .keep-code-copy,
+.desk-prose .keep-code-copy:focus-visible {
+  opacity: 1;
+}
+.desk-prose .keep-code-copy:hover {
+  color: var(--text);
+}
+.desk-prose code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  color: var(--hot);
+  background: var(--ink-5);
+  border-radius: var(--r-xs);
+  padding: 0.15em 0.35em;
+}
+/* Inside a selection, inline code takes the selection's colour instead of covering it with its own. */
+.desk-prose:not([data-vim-mode]) code:has(.in-selection) {
+  background: var(--selection);
+}
+.desk-prose pre code {
+  color: inherit;
+  background: none;
+  padding: 0;
+}
+/* Highlighted code, in the `--syntax-*` colours. */
+.desk-prose pre {
+  color: var(--text);
+}
+.desk-prose .hljs-comment,
+.desk-prose .hljs-quote,
+.desk-prose .hljs-meta {
+  color: var(--dim);
+  font-style: italic;
+}
+.desk-prose .hljs-keyword,
+.desk-prose .hljs-built_in,
+.desk-prose .hljs-type,
+.desk-prose .hljs-selector-tag,
+.desk-prose .hljs-doctag {
+  color: var(--syntax-keyword);
+}
+.desk-prose .hljs-string,
+.desk-prose .hljs-regexp,
+.desk-prose .hljs-addition,
+.desk-prose .hljs-template-tag {
+  color: var(--syntax-string);
+}
+.desk-prose .hljs-number,
+.desk-prose .hljs-literal,
+.desk-prose .hljs-symbol,
+.desk-prose .hljs-bullet {
+  color: var(--syntax-number);
+}
+.desk-prose .hljs-title,
+.desk-prose .hljs-section {
+  color: var(--syntax-title);
+}
+.desk-prose .hljs-attr,
+.desk-prose .hljs-attribute,
+.desk-prose .hljs-variable,
+.desk-prose .hljs-template-variable,
+.desk-prose .hljs-property,
+.desk-prose .hljs-name,
+.desk-prose .hljs-selector-class,
+.desk-prose .hljs-selector-id,
+.desk-prose .hljs-deletion {
+  color: var(--syntax-name);
+}
+.desk-prose .hljs-emphasis {
+  font-style: italic;
+}
+.desk-prose .hljs-strong {
+  font-weight: 600;
+}
+/* A Mermaid diagram: its source above the drawing while editing, the drawing alone when the page is read. */
+.desk-prose .keep-diagram {
+  margin: 0.5em 0;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.desk-prose .keep-diagram-source {
+  position: relative;
+  margin: 0;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  box-shadow: none;
+  padding-top: 1.9em;
+}
+.desk-prose .keep-diagram-label {
+  position: absolute;
+  top: 0.55em;
+  left: 1.4em;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--ink-45);
+  user-select: none;
+}
+.desk-prose .keep-diagram-preview {
+  display: flex;
+  justify-content: center;
+  padding: 1em;
+  overflow-x: auto;
+  min-height: 3em;
+}
+.desk-prose .keep-diagram-preview svg {
+  max-width: 100%;
+  height: auto;
+}
+.desk-prose .keep-diagram-error {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--hot);
+}
+.desk-prose[contenteditable="false"] .keep-diagram {
+  box-shadow: none;
+}
+.desk-prose[contenteditable="false"] .keep-diagram-source {
+  display: none;
+}
+.desk-prose hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1em 0;
+}
+.desk-prose hr.ProseMirror-selectednode {
+  border-top: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  background: none;
+}
+.desk-prose img {
+  max-width: 100%;
+  border-radius: var(--r-sm);
+}
+@layer components {
+  .desk-prose a {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: var(--ink-30);
+    text-underline-offset: 3px;
+  }
+  .desk-prose a:hover {
+    text-decoration-color: var(--ink);
+  }
+}
+.desk-prose table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 14px;
+}
+.desk-prose td,
+.desk-prose th {
+  border: 1px solid var(--line);
+  padding: 0.4em 0.65em;
+  vertical-align: top;
+}
+.desk-prose th {
+  background: var(--ink-5);
+  font-weight: 500;
+  text-align: left;
+}
+.desk-prose .is-empty:not([data-page-head], :has(.completion-ghost))::before {
+  content: attr(data-placeholder);
+  color: var(--ink-30);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.desk-prose a.link {
+  font-weight: 500;
+  text-decoration-color: var(--ink-20);
+}
+.desk-prose a.link:hover {
+  text-decoration-color: var(--ink-30);
+}
+.desk-prose a.link > [contenteditable="false"] {
+  display: inline;
+}
+.desk-prose .ProseMirror-selectednode {
+  outline: none;
+  background: var(--accent-soft);
+  border-radius: var(--r-xs);
+}
+/*
+ * Vim mode: the browser's caret gives way to `.vim-cursor` (vim/cursor.ts), which blinks and glides; the arrow,
+ * not the text cursor, outside insert mode; the matches of a `/` search.
+ */
+.desk-prose[data-vim-mode] {
+  caret-color: transparent;
+}
+
+.desk-prose[data-vim-mode="normal"],
+.desk-prose[data-vim-mode^="visual"] {
+  cursor: default;
+}
+
+/*
+ * In Vim mode the selection is drawn as whole boxes per line (`.vim-selection`), over inline code too. A text field
+ * set in the editor (the description, the properties) keeps its own.
+ */
+.desk-prose[data-vim-mode]::selection,
+.desk-prose[data-vim-mode] *:not(.field)::selection {
+  background: transparent;
+}
+
+.desk-prose .selectedCell {
+  background: var(--vim-selection);
+}
+
+.vim-selection-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background: var(--vim-selection);
+  border-radius: 2px;
+}
+
+.vim-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Under the text, which stays as it is. */
+  z-index: -1;
+  pointer-events: none;
+  background: var(--vim-cursor);
+  border-radius: 1px;
+  transition:
+    transform 90ms ease-out,
+    opacity 150ms ease;
+}
+
+[data-vim-blink="off"] > .vim-cursor {
+  opacity: 0;
+}
+
+.vim-cursor:not([data-shape="block"]) {
+  background: var(--vim-cursor-line);
+}
+
+/* A mention or an emoji under the cursor shows the block behind it, a little larger and rounded, not its selected wash. */
+.desk-prose.ProseMirror-focused .vim-cursor-node {
+  background: transparent;
+}
+.vim-cursor[data-on-node="true"] {
+  border-radius: var(--r-xs);
+}
+
+.vim-cursor[data-shape="underline"] {
+  clip-path: inset(calc(100% - 3px) 0 0 0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vim-cursor {
+    transition: none;
+  }
+}
+
+.vim-match {
+  background: var(--accent-soft);
+  border-radius: 2px;
+}
+
+/* Line numbers (vim/lines.ts): at the page's left or right border, over the page's margin. */
+.vim-lines {
+  position: absolute;
+  top: 0;
+  width: 2.5rem;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.vim-lines > div {
+  position: absolute;
+  left: 0;
+  width: 2rem;
+  text-align: right;
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  color: var(--ink-20);
+  user-select: none;
+}
+
+.vim-lines[data-side="left"] > div {
+  left: 0.5rem;
+}
+
+.vim-lines > div[data-current] {
+  color: var(--ink-45);
+}
+
+/* An HTML block of a Markdown file: its lines as they are, set like code. */
+.desk-prose .desk-raw-html {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-45);
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
