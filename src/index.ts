@@ -1,5 +1,5 @@
 export { bodyStart } from "./body";
-export { proseCodeBlock } from "./code-block";
+export { type Diagram, proseCodeBlock } from "./code-block";
 export { default as MarkdownEditor } from "./MarkdownEditor.svelte";
 export { markdownSchema, roundTrip } from "./markdown";
 export { MoveBlock } from "./move-block";

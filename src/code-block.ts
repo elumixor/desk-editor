@@ -9,20 +9,30 @@ const RENDER_DELAY_MS = 250;
 
 /** highlight.js's common languages; a diagram's source stays plain rather than guessed at. */
 const lowlight = createLowlight(common);
-lowlight.register(MERMAID_LANGUAGE, () => ({ name: MERMAID_LANGUAGE, contains: [] }));
+
+/** A language drawn rather than highlighted: its source as SVG/HTML, throwing with a message where it cannot be read. */
+export type Diagram = { label: string; render: (source: string) => Promise<string> | string };
 
 /**
- * Code blocks, highlighted in the palette's colours (`.hljs-*` in `editor.css`). Given `renderDiagram` (a source as SVG,
- * throwing with a message where it cannot be read), one in `mermaid` is a diagram: edited as code with the drawing live
+ * Code blocks, highlighted in the palette's colours (`.hljs-*` in `editor.css`). Given `diagrams` (by language) or
+ * `renderDiagram` (Mermaid), a block in one of those languages is a diagram: edited as code with the drawing live
  * underneath, and shown as the drawing alone when the page is read (the source hides with CSS once the editor is not
  * editable). Without it, it is code like any other, so Mermaid is only in the bundles that ask for it.
  */
-export const proseCodeBlock = ({ renderDiagram }: { renderDiagram?: (source: string) => Promise<string> } = {}) =>
-  CodeBlockLowlight.extend({
+export const proseCodeBlock = ({
+  renderDiagram,
+  diagrams: extra = {},
+}: { renderDiagram?: (source: string) => Promise<string>; diagrams?: Record<string, Diagram> } = {}) => {
+  const diagrams: Record<string, Diagram> = { ...extra };
+  if (renderDiagram) diagrams[MERMAID_LANGUAGE] ??= { label: "Mermaid", render: renderDiagram };
+  for (const language of Object.keys(diagrams))
+    if (!lowlight.registered(language)) lowlight.register(language, () => ({ name: language, contains: [] }));
+  return CodeBlockLowlight.extend({
     addNodeView() {
       return ({ node }) => {
         const language = node.attrs.language as string | null;
-        if (language !== MERMAID_LANGUAGE || !renderDiagram) {
+        const diagram = language ? diagrams[language] : undefined;
+        if (!diagram) {
           const pre = document.createElement("pre");
           const code = document.createElement("code");
           if (language) code.className = `language-${language}`;
@@ -45,14 +55,15 @@ export const proseCodeBlock = ({ renderDiagram }: { renderDiagram?: (source: str
         const dom = document.createElement("div");
         dom.className = "keep-diagram";
         dom.dataset.diagram = "";
+        dom.dataset.language = language ?? "";
         const source = document.createElement("pre");
         source.className = "keep-diagram-source";
         const label = document.createElement("span");
         label.className = "keep-diagram-label";
         label.contentEditable = "false";
-        label.textContent = "Mermaid";
+        label.textContent = diagram.label;
         const code = document.createElement("code");
-        code.className = "language-mermaid";
+        code.className = `language-${language}`;
         source.append(label, code);
         const preview = document.createElement("div");
         preview.className = "keep-diagram-preview";
@@ -75,7 +86,7 @@ export const proseCodeBlock = ({ renderDiagram }: { renderDiagram?: (source: str
                 return;
               }
               try {
-                const svg = await renderDiagram(text);
+                const svg = await diagram.render(text);
                 if (shown !== text) return;
                 preview.innerHTML = svg;
                 preview.dataset.state = "drawn";
@@ -97,7 +108,7 @@ export const proseCodeBlock = ({ renderDiagram }: { renderDiagram?: (source: str
           dom,
           contentDOM: code,
           update: (updated: PmNode) => {
-            if (updated.type !== node.type || updated.attrs.language !== MERMAID_LANGUAGE) return false;
+            if (updated.type !== node.type || updated.attrs.language !== language) return false;
             draw(updated.textContent);
             return true;
           },
@@ -108,3 +119,4 @@ export const proseCodeBlock = ({ renderDiagram }: { renderDiagram?: (source: str
       };
     },
   }).configure({ lowlight });
+};
